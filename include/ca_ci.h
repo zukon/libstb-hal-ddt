@@ -327,7 +327,15 @@ public:
 	void SetInitMask(enum CA_INIT_MASK InitMask);
 	/// Sets the frequency (in Hz) of the TS stream input (only valid for CI)
 	/// sh4 unused
-	void SetTSClock(u32 Speed);
+	void SetTSClock(u32 Speed, int slot = 0);
+
+#if BOXMODEL_VUPLUS_ALL
+	/// dvb wait delay for ci response
+	void SetCIDelay(int Delay);
+	/// relevant pids routing
+	void SetCIRelevantPidsRouting(int RPR, int slot = 0);
+#endif
+
 	/// Start the CA module
 	/// sh4 unused
 	bool Start(void);

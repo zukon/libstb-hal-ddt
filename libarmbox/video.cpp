@@ -65,6 +65,13 @@ extern "C"
 	_r;						\
 })
 
+#ifndef VIDEO_GET_SIZE
+#define VIDEO_GET_SIZE             _IOR('o', 55, video_size_t)
+#endif
+#ifndef VIDEO_GET_FRAME_RATE
+#define VIDEO_GET_FRAME_RATE       _IOR('o', 56, unsigned int)
+#endif
+
 cVideo * videoDecoder = NULL;
 cVideo * pipDecoder = NULL;
 
@@ -364,6 +371,7 @@ int image_to_mpeg2(const char *image_name, int fd)
 				av_packet_unref(&packet);
 			}
 			avcodec_close(codecContext);
+			av_free(codecContext);
 		}
 		avformat_close_input(&formatContext);
 	}
@@ -935,8 +943,9 @@ void cVideo::SetControl(int control, int value)
 		break;
 	case VIDEO_CONTROL_ZAPPING_MODE:
 		zapping_mode = value;
-		const char *mode_zapping[] = { "hold", "mute" };
-		proc_put("/proc/stb/video/zapping_mode", mode_zapping[zapping_mode], strlen(mode_zapping[zapping_mode]));
+		const char *mode_zapping[] = { "mute", "hold", "mutetilllock", "holdtilllock"};
+		proc_put("/proc/stb/video/zapmode", mode_zapping[zapping_mode], strlen(mode_zapping[zapping_mode]));
+//		proc_put("/proc/stb/video/zapping_mode", mode_zapping[zapping_mode], strlen(mode_zapping[zapping_mode]));
 		break;
 	}
 	if (p) {

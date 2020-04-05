@@ -308,7 +308,7 @@ static char *Codec2Encoding(int32_t codec_id, int32_t media_type, uint8_t *extra
 		case AV_CODEC_ID_MPEG2VIDEO:
 			return "V_MPEG2";
 		case AV_CODEC_ID_MJPEG:
-			return "V_MJPEG";
+			return NULL;//"V_MJPEG";
 		case AV_CODEC_ID_H263:
 		case AV_CODEC_ID_H263P:
 		case AV_CODEC_ID_H263I:
@@ -1772,9 +1772,9 @@ int32_t container_ffmpeg_init_av_context(Context_t *context, char *filename, uin
 
 			if (2 == haveNativeProto)
 			{
-				filename = malloc(strlen(baseUri) + 2 + 1);
-				strncpy(filename, "ff", 2);
-				strcpy(filename + 2, baseUri);
+				int len = strlen(baseUri) + 2 + 1;
+				filename = malloc(len);
+				snprintf(filename,len,"ff%s",baseUri);
 				free(baseUri);
 				// memory leak, only once, so does not matter
 			}
@@ -3140,7 +3140,7 @@ static int32_t container_ffmpeg_switch_audio(Context_t *context, int32_t *arg __
 	releaseMutex(__FILE__, __FUNCTION__, __LINE__);
 
 	/* Hellmaster1024: nothing to do here! */
-	int64_t sec = -1;
+	int64_t sec = -3;
 	context->playback->Command(context, PLAYBACK_SEEK, (void *)&sec);
 	return cERR_CONTAINER_FFMPEG_NO_ERROR;
 }

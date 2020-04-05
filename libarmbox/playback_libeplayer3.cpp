@@ -4,15 +4,19 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sstream>
 
 #include <audio_lib.h>
 #include <video_lib.h>
 
+extern "C" {
 #include <common.h>
 extern OutputHandler_t      OutputHandler;
 extern PlaybackHandler_t    PlaybackHandler;
 extern ContainerHandler_t   ContainerHandler;
 extern ManagerHandler_t     ManagerHandler;
+extern int32_t ffmpeg_av_dict_set( const char *key, const char *value, int32_t flags);
+}
 
 #include "playback_libeplayer3.h"
 #include "hal_debug.h"
@@ -100,7 +104,7 @@ bool cPlayback::Start(std::string filename, std::string headers, std::string fil
 	return Start((char *) filename.c_str(), 0, 0, 0, 0, 0, headers,filename2);
 }
 
-bool cPlayback::Start(char *filename, int vpid, int vtype, int apid, int ac3, int, std::string headers __attribute__((unused)),std::string filename2)
+bool cPlayback::Start(char *filename, int vpid, int vtype, int apid, int ac3, int, std::string headers, std::string filename2)
 {
 	bool ret = false;
 	bool isHTTP = false;
@@ -135,6 +139,22 @@ bool cPlayback::Start(char *filename, int vpid, int vtype, int apid, int ac3, in
 	}
 	else
 		isHTTP = true;
+
+	if(isHTTP && headers.empty())
+	{
+		size_t pos = file.find('#');
+		if (pos != std::string::npos)
+		{
+			headers = file.substr(pos + 1);
+			pos = headers.find("User-Agent=");
+			if (pos != std::string::npos)
+				headers.replace(pos+10, 1, ": ");
+		}
+	}
+	if(!headers.empty()){
+		const char hkey[] = "headers";
+		ffmpeg_av_dict_set(hkey, headers.c_str(), 0);
+	}
 
 	std::string szSecondFile;
 	char *file2 = NULL;
@@ -385,7 +405,7 @@ bool cPlayback::SetSpeed(int speed)
 
 		if (init_jump > -1)
 		{
-			SetPosition(init_jump);
+			SetPosition(init_jump, true);
 			init_jump = -1;
 		}
 
@@ -523,7 +543,7 @@ void cPlayback::FindAllPids(int *apids, unsigned int *ac3flags, unsigned int *nu
 	int max_numpida = *numpida;
 	*numpida = 0;
 
-	if (player && player->manager && player->manager->audio)
+	if (player && player->playback && player->playback->isPlaying && player->manager && player->manager->audio)
 	{
 		char **TrackList = NULL;
 		player->manager->audio->Command(player, MANAGER_LIST, &TrackList);
@@ -536,9 +556,12 @@ void cPlayback::FindAllPids(int *apids, unsigned int *ac3flags, unsigned int *nu
 				printf("\t%s - %s\n", TrackList[i], TrackList[i + 1]);
 				if (j < max_numpida)
 				{
-					int _pid;
-					char _lang[strlen(TrackList[i])];
-					if (2 == sscanf(TrackList[i], "%d %s\n", &_pid, _lang))
+					int _pid = 0;
+					std::string _lang ;
+					std::istringstream iss(TrackList[i]) ;
+					iss >> _pid;
+					iss >> _lang;
+					if (_pid && !_lang.empty())
 					{
 						apids[j] = _pid;
 						// atUnknown, atMPEG, atMP3, atAC3, atDTS, atAAC, atPCM, atOGG, atFLAC
@@ -563,7 +586,7 @@ void cPlayback::FindAllPids(int *apids, unsigned int *ac3flags, unsigned int *nu
 						else
 							ac3flags[j] = 0;    //todo
 						std::string _language = "";
-						_language += std::string(_lang);
+						_language += _lang;
 						_language += " - ";
 						_language += "(";
 						_language += TrackList[i + 1];
@@ -600,12 +623,15 @@ void cPlayback::FindAllSubtitlePids(int *pids, unsigned int *numpids, std::strin
 				printf("\t%s - %s\n", TrackList[i], TrackList[i + 1]);
 				if (j < max_numpids)
 				{
-					int _pid;
-					char _lang[strlen(TrackList[i])];
-					if (2 == sscanf(TrackList[i], "%d %s\n", &_pid, _lang))
+					int _pid = 0;
+					std::string _lang ;
+					std::istringstream iss(TrackList[i]) ;
+					iss >> _pid;
+					iss >> _lang;
+					if (_pid && !_lang.empty())
 					{
 						pids[j] = _pid;
-						language[j] = std::string(_lang);
+						language[j] = _lang;
 					}
 				}
 				free(TrackList[i]);

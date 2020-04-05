@@ -671,7 +671,7 @@ static int ParseParams(int argc, char *argv[], PlayFiles_t *playbackFiles, int *
 			strcpy(playbackFiles->szFirstFile, "file://");
 		}
 		strcat(playbackFiles->szFirstFile, argv[optind]);
-		playbackFiles->szFirstFile[IPTV_MAX_FILE_PATH] = '\0';
+		playbackFiles->szFirstFile[IPTV_MAX_FILE_PATH-1] = '\0';
 		map_inter_file_path(playbackFiles->szFirstFile);
 		printf("file: [%s]\n", playbackFiles->szFirstFile);
 		++optind;
@@ -685,7 +685,7 @@ static int ParseParams(int argc, char *argv[], PlayFiles_t *playbackFiles, int *
 
 int main(int argc, char *argv[])
 {
-	system("echo 'encoder' > /proc/stb/avs/0/input");
+	int ignored __attribute__((unused)) = system("echo 'encoder' > /proc/stb/avs/0/input");
 
 	pthread_t termThread;
 	int isTermThreadStarted = 0;

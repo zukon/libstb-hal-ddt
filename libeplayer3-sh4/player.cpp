@@ -317,7 +317,9 @@ bool Player::SlowMotion(int repeats)
 
 bool Player::Seek(int64_t pos, bool absolute)
 {
-	output.Clear();
+	if (GetVideoPid())
+	/* Don't Clear if no video track */
+		output.Clear();
 	return input.Seek(pos, absolute);
 }
 
@@ -347,7 +349,7 @@ bool Player::SwitchVideo(int pid)
 bool Player::SwitchAudio(int pid)
 {
 	Track *track = manager.getAudioTrack(pid);
-	return input.SwitchAudio(track);
+	return track ? input.SwitchAudio(track) : false;
 }
 
 bool Player::SwitchSubtitle(int pid)

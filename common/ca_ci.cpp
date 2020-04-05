@@ -56,7 +56,11 @@ static cCA* pcCAInstance = NULL;
 /* nur diese Message wird vom CI aus neutrinoMessages.h benutzt */
 /* für den CamMsgHandler, darum hier einfach mal definiert */
 /* die Feinheiten werden ja in CA_MESSAGE verpackt */
+#if HAVE_ARM_HARDWARE || HAVE_MIPS_HARDWARE
+uintptr_t EVT_CA_MESSAGE = 0x80000000 + 60;
+#else
 uint32_t EVT_CA_MESSAGE = 0x80000000 + 60;
+#endif
 
 static cs_messenger cam_messenger = NULL;
 
@@ -479,7 +483,12 @@ bool cCA::SendMessage(const CA_MESSAGE *msg)
 {
 	hal_debug("%s\n", __func__);
 	if(cam_messenger)
+#if HAVE_ARM_HARDWARE || HAVE_MIPS_HARDWARE
+		cam_messenger(EVT_CA_MESSAGE, (uintptr_t) msg);
+#else
 		cam_messenger(EVT_CA_MESSAGE, (uint32_t) msg);
+#endif
+
 #if z_debug
 	printf("*******Message\n");
 	printf("msg: %p\n", msg);
@@ -1098,7 +1107,7 @@ void cCA::setInputs()
 #if BOXMODEL_VUULTIMO4K
 	for (int number = 0; number < 24; number++) // tuner A to X, input 0 to 23
 #else
-#if BOXMODEL_VUSOLO4K || BOXMODEL_VUDUO4K || BOXMODEL_VUUNO4KSE
+#if BOXMODEL_VUSOLO4K || BOXMODEL_VUDUO4K || BOXMODEL_VUUNO4KSE || BOXMODEL_VUUNO4K
 	for (int number = 0; number < 16; number++) // tuner A to P, input 0 to 15
 #else
 	for (int number = 0; number < 4; number++) // tuner A to D, input 0 to 3
@@ -1906,7 +1915,7 @@ void cCA::setCheckLiveSlot(int check)
 		checkLiveSlot = false;
 }
 
-void cCA::SetTSClock(u32 Speed)
+void cCA::SetTSClock(u32 Speed, int slot)
 {
 /* TODO:
  * For now using the coolstream values from neutrino cam_menu
@@ -1918,20 +1927,47 @@ void cCA::SetTSClock(u32 Speed)
  * and here too.
  * On the other hand: or ci_clock will be set here for all ci slots ????
  */ 
- 	char buf[64];
-	snprintf(buf, 64, "/proc/stb/tsmux/ci%d_tsclk", 0);
+	char buf[64];
+	snprintf(buf, 64, "/proc/stb/tsmux/ci%d_tsclk", slot);
 	FILE *ci = fopen(buf, "wb");
-	printf("%s -> %s to: %s\n", FILENAME, __func__, Speed > 6 * 1000000 ? "high" : "normal");
+	printf("%s -> %s to: %s\n", FILENAME, __func__, Speed > 9 * 1000000 ? "extra_high" : Speed > 6 * 1000000 ? "high" : "normal");
 	if (ci)
 	{
-		if (Speed > 6 * 1000000)
-		{
-			fprintf(ci, "high");
-		}
+		if (Speed > 9 * 1000000)
+			fprintf(ci, "extra_high");
 		else
-		{
+		if (Speed > 6 * 1000000)
+			fprintf(ci, "high");
+		else
 			fprintf(ci, "normal");
-		}
 		fclose(ci);
 	}
 }
+
+#if BOXMODEL_VUPLUS_ALL
+void cCA::SetCIDelay(int Delay)
+{
+	char buf[64];
+	snprintf(buf, 64, "/proc/stb/tsmux/rmx_delay");
+	FILE *ci = fopen(buf, "wb");
+	printf("%s -> %s to: %i\n", FILENAME, __func__, Delay);
+	if (ci)
+	{
+		fprintf(ci, "%i", Delay);
+		fclose(ci);
+	}
+}
+
+void cCA::SetCIRelevantPidsRouting(int RPR, int slot)
+{
+	char buf[64];
+	snprintf(buf, 64, "/proc/stb/tsmux/ci%d_relevant_pids_routing", slot);
+	FILE *ci = fopen(buf, "wb");
+	printf("%s -> %s to: %i\n", FILENAME, __func__, RPR);
+	if (ci)
+	{
+		fprintf(ci, "%s", RPR == 1 ? "yes" : "no");
+		fclose(ci);
+	}
+}
+#endif
